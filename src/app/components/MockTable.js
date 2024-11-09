@@ -43,6 +43,17 @@ const MockTable = () => {
     "categories",
   ]);
 
+  const [availableCategories, setAvailableCategories] = React.useState([]);
+  const [selectedCategories, setSelectedCategories] = React.useState([]);
+
+  React.useEffect(() => {
+    const categories = new Set();
+    mockData.forEach((item) => {
+      item.categories.forEach((category) => categories.add(category));
+    });
+    setAvailableCategories(Array.from(categories));
+  }, []);
+
   React.useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -102,6 +113,24 @@ const MockTable = () => {
     setColumnOrder(newColumnOrder);
   };
 
+  const applyCategoryFilter = () => {
+    if (selectedCategories.length === 0) {
+      setSortedData(mockData);
+    } else {
+      const filtered = mockData.filter((item) =>
+        item.categories.some((category) =>
+          selectedCategories.includes(category)
+        )
+      );
+      setSortedData(filtered);
+    }
+    setActiveFilter({
+      column: "categories",
+      value: selectedCategories.join(", "),
+    });
+    setShowFilterModal(false);
+  };
+
   return (
     <div className="w-full overflow-x-auto rounded-lg">
       {activeFilter.value && (
@@ -155,11 +184,7 @@ const MockTable = () => {
                               ? "bg-gray-100 dark:bg-gray-600"
                               : ""
                           }`}
-                          onClick={
-                            column !== "categories"
-                              ? (e) => handleColumnClick(column, e)
-                              : undefined
-                          }
+                          onClick={(e) => handleColumnClick(column, e)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -224,32 +249,34 @@ const MockTable = () => {
                               </svg>
                             )}
                           </div>
-                          {showMenu &&
-                            activeColumn === column &&
-                            column !== "categories" && (
-                              <div className="absolute z-10 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
-                                <div className="py-1" role="menu">
-                                  <button
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    onClick={() => handleSort("asc")}
-                                  >
-                                    Sort ascending
-                                  </button>
-                                  <button
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    onClick={() => handleSort("desc")}
-                                  >
-                                    Sort descending
-                                  </button>
-                                  <button
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    onClick={handleFilter}
-                                  >
-                                    Filter
-                                  </button>
-                                </div>
+                          {showMenu && activeColumn === column && (
+                            <div className="absolute z-10 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+                              <div className="py-1" role="menu">
+                                {column !== "categories" ? (
+                                  <>
+                                    <button
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      onClick={() => handleSort("asc")}
+                                    >
+                                      Sort ascending
+                                    </button>
+                                    <button
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      onClick={() => handleSort("desc")}
+                                    >
+                                      Sort descending
+                                    </button>
+                                  </>
+                                ) : null}
+                                <button
+                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={handleFilter}
+                                >
+                                  Filter
+                                </button>
                               </div>
-                            )}
+                            </div>
+                          )}
                         </th>
                       )}
                     </Draggable>
@@ -317,23 +344,61 @@ const MockTable = () => {
               Filter by{" "}
               {activeColumn.charAt(0).toUpperCase() + activeColumn.slice(1)}
             </h3>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-              placeholder="Type to filter..."
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-            />
+
+            {activeColumn === "categories" ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {availableCategories.map((category) => (
+                  <label key={category} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(category)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCategories([
+                            ...selectedCategories,
+                            category,
+                          ]);
+                        } else {
+                          setSelectedCategories(
+                            selectedCategories.filter((c) => c !== category)
+                          );
+                        }
+                      }}
+                      className="rounded border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="text-sm dark:text-gray-200">
+                      {category}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                placeholder="Type to filter..."
+                value={filterValue}
+                onChange={(e) => setFilterValue(e.target.value)}
+              />
+            )}
+
             <div className="mt-4 flex justify-end gap-2">
               <button
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded dark:text-gray-400 dark:hover:bg-gray-700"
-                onClick={() => setShowFilterModal(false)}
+                onClick={() => {
+                  setShowFilterModal(false);
+                  setSelectedCategories([]);
+                }}
               >
                 Cancel
               </button>
               <button
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={applyFilter}
+                onClick={
+                  activeColumn === "categories"
+                    ? applyCategoryFilter
+                    : applyFilter
+                }
               >
                 Apply Filter
               </button>
